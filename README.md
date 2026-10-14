@@ -225,3 +225,9 @@ Replace these placeholders with screenshots captured from a running deployment (
 - The chatbot attachment control does not upload or process files.
 - Cloudinary is optional, but profile-image uploads are unavailable until all three Cloudinary variables are configured.
 - Automated unit/integration tests are not configured, and the current frontend lint run reports errors and warnings.
+
+## Project management (Jira)
+
+The project is planned and tracked in Jira using Scrum, with epics, user stories and acceptance criteria, sprints, and a defect log. The original application was built as a team project for CSE471 (Summer 2025); its requirements form the v1.0 baseline. v1.1 is the current hardening, testing, and deployment phase.
+
+![Jira backlog grouped by epic](docs/pm/jira/jira-backlog.png)
