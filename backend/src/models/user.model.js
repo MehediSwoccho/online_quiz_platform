@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema(
     password:{
         type:String,
         minlength:6,
-        required:true
+        required:true,
+        select:false
     },
     userType:{
         type:String,
@@ -26,6 +27,10 @@ const userSchema = new mongoose.Schema(
         required: function() {
             return this.userType === 'parent';
         }
+    },
+    parentAccessCodeHash: {
+        type: String,
+        select: false
     },
     profilePic:{
         type:String,

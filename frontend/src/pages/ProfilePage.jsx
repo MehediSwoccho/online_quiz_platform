@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { authStore } from '../store/useAuthStore'
 
 export const ProfilePage = () => {
-  const { authUser, updateProfile } = authStore()
+  const { authUser, updateProfile, generateParentAccessCode } = authStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
@@ -11,6 +11,23 @@ export const ProfilePage = () => {
     email: ''
   })
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [parentAccessCode, setParentAccessCode] = useState('')
+  const [accessCodeLoading, setAccessCodeLoading] = useState(false)
+  const [accessCodeError, setAccessCodeError] = useState('')
+
+  const handleGenerateParentAccessCode = async () => {
+    setAccessCodeLoading(true)
+    setAccessCodeError('')
+    setParentAccessCode('')
+
+    const result = await generateParentAccessCode()
+    if (result.success) {
+      setParentAccessCode(result.accessCode)
+    } else {
+      setAccessCodeError(result.error)
+    }
+    setAccessCodeLoading(false)
+  }
 
   // Initialize form data when authUser changes
   useEffect(() => {
@@ -20,7 +37,7 @@ export const ProfilePage = () => {
         email: authUser.email || ''
       })
     }
-  })
+  }, [authUser])
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0]
@@ -204,7 +221,30 @@ export const ProfilePage = () => {
           </div>
 
           {/* Additional profile sections could go here */}
-          
+          {authUser?.userType === 'student' && (
+            <section className="border-t pt-6">
+              <h2 className="text-lg font-semibold">Parent access</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Generate a private code to let a parent view your quiz results. Generating a new code replaces the previous one.
+              </p>
+              <button
+                type="button"
+                onClick={handleGenerateParentAccessCode}
+                disabled={accessCodeLoading}
+                className="mt-3 rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {accessCodeLoading ? 'Generating...' : 'Generate / rotate parent access code'}
+              </button>
+              {parentAccessCode && (
+                <p className="mt-3 break-all rounded bg-gray-100 p-3 font-mono text-sm" role="status">
+                  {parentAccessCode}
+                </p>
+              )}
+              {accessCodeError && (
+                <p className="mt-3 text-sm text-red-600" role="alert">{accessCodeError}</p>
+              )}
+            </section>
+          )}
         </div>
       </div>
 

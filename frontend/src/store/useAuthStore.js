@@ -113,18 +113,30 @@ export const authStore = create((set) => ({
         }
     },
 
-    parentLogin: async (studentEmail) => {
+    parentLogin: async (studentEmail, accessCode) => {
         try {
             const res = await axiosInstance.post("/auth/parent-login", {
-                studentEmail
+                studentEmail,
+                accessCode
             });
             set({ authUser: res.data });
             return { success: true };
         } catch (error) {
-            console.error("Error in parent login:", error);
             return {
                 success: false,
                 error: error.response?.data?.message || "An error occurred during parent login"
+            };
+        }
+    },
+
+    generateParentAccessCode: async () => {
+        try {
+            const res = await axiosInstance.post("/auth/parent-access-code");
+            return { success: true, accessCode: res.data.accessCode };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.message || "Unable to generate a parent access code"
             };
         }
     },

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authStore } from '../store/useAuthStore'
-import { useThemeStore } from '../store/useThemeStore'
 
 export const LoginPage = () => {
   const [activeTab, setActiveTab] = useState('regular') // 'regular' or 'parent'
@@ -10,13 +9,13 @@ export const LoginPage = () => {
     password: '',
   })
   const [parentFormData, setParentFormData] = useState({
-    studentEmail: ''
+    studentEmail: '',
+    accessCode: ''
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { login, parentLogin } = authStore()
-  const { theme } = useThemeStore()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -43,7 +42,7 @@ export const LoginPage = () => {
     setLoading(true)
     
     try {
-      const result = await parentLogin(parentFormData.studentEmail)
+      const result = await parentLogin(parentFormData.studentEmail, parentFormData.accessCode)
       if (result.success) {
         navigate('/parent-dashboard')
       } else {
@@ -54,13 +53,6 @@ export const LoginPage = () => {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleChange = (e) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }))
   }
 
   return (
@@ -149,7 +141,7 @@ export const LoginPage = () => {
                 {error}
               </div>
             )}
-            <div className="rounded-md shadow-sm">
+            <div className="rounded-md shadow-sm space-y-3">
               <div>
                 <input
                   name="studentEmail"
@@ -157,14 +149,26 @@ export const LoginPage = () => {
                   autoComplete="email"
                   required
                   value={parentFormData.studentEmail}
-                  onChange={(e) => setParentFormData({ studentEmail: e.target.value })}
+                  onChange={(e) => setParentFormData({ ...parentFormData, studentEmail: e.target.value })}
                   className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
-                  placeholder="Enter your child's email address"
+                  placeholder="Student account email"
+                />
+              </div>
+              <div>
+                <input
+                  name="accessCode"
+                  type="password"
+                  autoComplete="one-time-code"
+                  required
+                  value={parentFormData.accessCode}
+                  onChange={(e) => setParentFormData({ ...parentFormData, accessCode: e.target.value })}
+                  className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
+                  placeholder="Parent access code"
                 />
               </div>
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400 text-center">
-              Enter your child's registered email address to access their quiz results
+              The student must generate and securely share this code from their Profile page. They can replace it at any time; never use the student's password.
             </div>
             <div>
               <button

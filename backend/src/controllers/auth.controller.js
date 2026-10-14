@@ -1,8 +1,9 @@
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import { genToken } from "../lib/genToken.js";
-import cloudinary from "../lib/cloudinary.js";
+import cloudinary, { isCloudinaryConfigured } from "../lib/cloudinary.js";
 import jwt from "jsonwebtoken";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const signup = async (req, res) => {
   try {
@@ -47,7 +48,7 @@ export const signup = async (req, res) => {
 export const login = async (req,res) =>{
   try{
     const {email,password} = req.body;
-  const user = await User.findOne({email});
+  const user = await User.findOne({email}).select("+password");
   if(!user){
     return res.status(400).json({
       message: "Wrong credentials"
@@ -105,6 +106,11 @@ export const updateProfile = async(req,res)=>{
     
     
     if(profilePic) {
+      if (!isCloudinaryConfigured) {
+        return res.status(503).json({
+          message: "Profile image uploads are unavailable because Cloudinary is not configured"
+        });
+      }
       const uploadResult = await cloudinary.uploader.upload(profilePic);
       updateFields.profilePic = uploadResult.secure_url;
     }
@@ -154,43 +160,72 @@ export const updateProfile = async(req,res)=>{
   }
 };
 
-// Parent login using student email
-export const parentLogin = async (req, res) => {
+const hashParentAccessCode = (accessCode) =>
+  createHash("sha256").update(accessCode).digest("hex");
+
+export const generateParentAccessCode = async (req, res) => {
   try {
-    const { studentEmail } = req.body;
-    
-    // Find the student by email
-    const student = await User.findOne({ email: studentEmail, userType: "student" });
-    if (!student) {
-      return res.status(400).json({
-        message: "Student not found with this email"
-      });
+    if (req.user.userType !== "student") {
+      return res.status(403).json({ message: "Only students can create a parent access code" });
     }
 
-    // Check if parent account already exists for this student
-    let parent = await User.findOne({ childEmail: studentEmail, userType: "parent" });
-    
+    const accessCode = randomBytes(24).toString("base64url");
+    await User.findByIdAndUpdate(req.user._id, {
+      $set: { parentAccessCodeHash: hashParentAccessCode(accessCode) }
+    });
+
+    return res.status(200).json({ accessCode });
+  } catch (error) {
+    console.error("Error generating parent access code:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Parent login requires a code created from the authenticated student's account.
+export const parentLogin = async (req, res) => {
+  try {
+    const { studentEmail, accessCode } = req.body;
+    const normalizedStudentEmail = typeof studentEmail === "string"
+      ? studentEmail.trim().toLowerCase()
+      : "";
+    if (!normalizedStudentEmail || normalizedStudentEmail.length > 254
+      || typeof accessCode !== "string" || !/^[A-Za-z0-9_-]{32}$/.test(accessCode)) {
+      return res.status(401).json({ message: "Invalid student email or parent access code" });
+    }
+
+    const student = await User.findOne({ email: normalizedStudentEmail, userType: "student" })
+      .select("+parentAccessCodeHash");
+    const suppliedHash = Buffer.from(hashParentAccessCode(accessCode), "hex");
+    const storedHash = student?.parentAccessCodeHash
+      ? Buffer.from(student.parentAccessCodeHash, "hex")
+      : Buffer.alloc(suppliedHash.length);
+    const validCode = student?.parentAccessCodeHash
+      && storedHash.length === suppliedHash.length
+      && timingSafeEqual(storedHash, suppliedHash);
+
+    if (!validCode) {
+      return res.status(401).json({ message: "Invalid student email or parent access code" });
+    }
+
+    let parent = await User.findOne({ childEmail: student.email, userType: "parent" });
     if (!parent) {
-      // Create a temporary parent account
-      const tempPassword = Math.random().toString(36).slice(-8);
-      const saltRounds = 10;
-      const salt = await bcrypt.genSalt(saltRounds);
-      const hashedPassword = await bcrypt.hash(tempPassword, salt);
+      const randomParentPassword = randomBytes(32).toString("hex");
+      const hashedPassword = await bcrypt.hash(randomParentPassword, 10);
 
       parent = new User({
         fullName: `Parent of ${student.fullName}`,
-        email: `parent_${studentEmail}`,
+        email: `parent_${student._id}@parent.local`,
         password: hashedPassword,
         userType: "parent",
-        childEmail: studentEmail
+        childEmail: student.email
       });
 
       await parent.save();
     }
 
     genToken(parent._id, res);
-    
-    res.status(200).json({
+
+    return res.status(200).json({
       id: parent._id,
       fullName: parent.fullName,
       email: parent.email,

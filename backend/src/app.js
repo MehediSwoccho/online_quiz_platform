@@ -16,13 +16,14 @@ import ratingRouter from "./routers/rating.router.js";
 import parentRouter from "./routers/parent.router.js";
 
 const app = express();
+app.set("trust proxy", 1);
 const allowedOrigins = (process.env.CLIENT_URL || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 

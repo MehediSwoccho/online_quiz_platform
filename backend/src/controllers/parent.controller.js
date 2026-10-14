@@ -6,14 +6,11 @@ import Class from "../models/class.model.js";
 // Get all quiz results for the parent's child
 export const getChildQuizResults = async (req, res) => {
   try {
-    console.log('getChildQuizResults called for parent:', req.user._id);
     const parentId = req.user._id;
     
     // Get parent account to find child email
     const parent = await User.findById(parentId);
-    console.log('Parent found:', parent);
     if (!parent || parent.userType !== 'parent') {
-      console.log('Access denied - not a parent account');
       return res.status(403).json({
         message: "Access denied. Parent account required."
       });
@@ -24,10 +21,7 @@ export const getChildQuizResults = async (req, res) => {
       email: parent.childEmail, 
       userType: "student" 
     });
-    console.log('Student found:', student);
-    
     if (!student) {
-      console.log('Student not found with email:', parent.childEmail);
       return res.status(404).json({
         message: "Student not found"
       });
@@ -44,11 +38,8 @@ export const getChildQuizResults = async (req, res) => {
       })
       .sort({ createdAt: -1 });
     
-    console.log('Submissions found:', submissions.length);
-
     // Format the results
     const quizResults = submissions.map(submission => {
-      console.log('Processing submission:', submission._id, submission.quiz?.title);
       const percentage = submission.totalPoints > 0 
         ? Math.round((submission.totalScore / submission.totalPoints) * 100)
         : 0;
@@ -68,15 +59,14 @@ export const getChildQuizResults = async (req, res) => {
       };
     });
 
-    console.log('Sending response with quiz results:', quizResults.length);
     res.status(200).json({
       studentName: student.fullName,
       studentEmail: student.email,
       results: quizResults
     });
 
-  } catch (error) {
-    console.error("Error getting child quiz results:", error);
+  } catch {
+    console.error("Error getting child quiz results");
     res.status(500).json({
       message: "Internal server error"
     });
@@ -146,8 +136,8 @@ export const getQuizResultDetails = async (req, res) => {
       isLowScore: percentage < 30
     });
 
-  } catch (error) {
-    console.error("Error getting quiz result details:", error);
+  } catch {
+    console.error("Error getting quiz result details");
     res.status(500).json({
       message: "Internal server error"
     });
@@ -223,8 +213,8 @@ export const getParentNotifications = async (req, res) => {
       count: notifications.length
     });
 
-  } catch (error) {
-    console.error("Error getting parent notifications:", error);
+  } catch {
+    console.error("Error getting parent notifications");
     res.status(500).json({
       message: "Internal server error"
     });
